@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import Reactor from "@/components/Reactor";
+import { readChatStream } from "@/lib/chat-stream";
 import { recordQuestion } from "@/lib/audio";
 import type { Message } from "@/lib/server";
 import { WakeListener } from "@/lib/wake";
@@ -89,42 +90,64 @@ export default function Home() {
         110000
     )
       recent.shift();
-    const result = await (
-      await api("/api/chat", { messages: recent }, signal)
-    ).json();
-    if (result.truncated)
-      setError(
-        "The answer reached the model’s output limit. Ask Jarvis to continue for the rest.",
-      );
-    setLatency(Math.round(performance.now() - start));
-    const updated: Message[] = [
-      ...next,
-      { role: "assistant", content: result.text },
-    ];
-    history.current = updated;
-    setMessages(updated);
-    let spoken = !voiceRef.current;
-    if (voiceRef.current) {
-      try {
-        for (const chunk of speechChunks(result.text)) {
-          signal.throwIfAborted();
-          const response = await api("/api/speak", { text: chunk }, signal);
-          await speech.current!.play(
-            await response.arrayBuffer(),
-            signal,
-            () => setPhase("speaking"),
-            setLevel,
-          );
+    let fullText = "";
+    let speechBuffer = "";
+    let speechFailed = false;
+    let speechQueue = Promise.resolve();
+    const wantsVoice = voiceRef.current;
+    const enqueue = (text: string) => {
+      if (!wantsVoice || !text.trim()) return;
+      speechQueue = speechQueue.then(async () => {
+        if (speechFailed) return;
+        signal.throwIfAborted();
+        try {
+          for (const chunk of speechChunks(text)) {
+            const response = await api('/api/speak', {text:chunk}, signal);
+            await speech.current!.play(await response.arrayBuffer(), signal, () => setPhase('speaking'), setLevel);
+          }
+        } catch (error) {
+          speechFailed = true;
+          if (!signal.aborted) {
+            setError(`Speech could not finish: ${error instanceof Error ? error.message : 'Audio service failed'}. Your answer remains in chat.`);
+            setShowControls(true);
+          }
         }
-        spoken = true;
-      } catch (e) {
-        if (signal.aborted) throw e;
-        setError(`Speech could not finish: ${e instanceof Error ? e.message : 'Audio service failed'}. Your answer remains in chat.`);
-        setShowControls(true);
-      }
+      }).catch(() => {speechFailed = true;});
+    };
+    try {
+      const response = await api('/api/chat', {messages:recent, stream:true}, signal);
+      let first = true;
+      const result = await readChatStream(response, delta => {
+        if (first) {setLatency(Math.round(performance.now()-start));first=false;}
+        fullText += delta;
+        setMessages([...next, {role:'assistant',content:fullText}]);
+        speechBuffer += delta;
+        // Start synthesis at a sentence boundary, before generation completes.
+        let match;
+        while ((match = /[.!?](?:["”’)]*)\s/.exec(speechBuffer))) {
+          const cut = match.index + match[0].length;
+          enqueue(speechBuffer.slice(0,cut));speechBuffer=speechBuffer.slice(cut);
+        }
+        if (speechBuffer.length > 1200) {
+          const cut = speechBuffer.lastIndexOf(' ',1200);
+          enqueue(speechBuffer.slice(0,cut>0?cut:1200));speechBuffer=speechBuffer.slice(cut>0?cut:1200);
+        }
+      });
+      if (!fullText.trim()) throw new Error('NVIDIA returned an empty answer. Please try again.');
+      history.current = [...next,{role:'assistant',content:fullText}];
+      enqueue(speechBuffer);
+      if(result.truncated)setError('The answer reached the model’s output limit. Ask Jarvis to continue.');
+      await speechQueue;
+      signal.throwIfAborted();
+      return !speechFailed && /[?？]$/.test(fullText.trim().replace(/["”’\x27)*\]]+$/, '').trim());
+    } catch (error) {
+      speechFailed = true;
+      await speechQueue;
+      if(fullText) history.current = [...next,{role:'assistant',content:fullText}];
+      throw error;
     }
-    return spoken && /[?？]$/.test(result.text.trim().replace(/["”’\x27)*\]]+$/, "").trim());
   }
+
   async function run(text?: string) {
     if (busy.current) return;
     if (voiceRef.current) {
@@ -422,7 +445,7 @@ export default function Home() {
                 <b>NVIDIA NIM</b>
               </div>
               <div>
-                <span>LAST ANSWER</span>
+                <span>FIRST TEXT</span>
                 <b>
                   {latency === null ? "—" : `${(latency / 1000).toFixed(2)} s`}
                 </b>

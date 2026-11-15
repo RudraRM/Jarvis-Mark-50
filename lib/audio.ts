@@ -48,7 +48,7 @@ export async function recordQuestion(
         const now = performance.now();
         if (
           now - start > 20000 ||
-          (heard && now - lastSound > 1300) ||
+          (heard && now - lastSound > 800) ||
           (!heard && now - start > 7000)
         ) {
           cleanup();

@@ -50,7 +50,7 @@ The server binds to loopback by default. Add authentication and rate limiting be
 ## 🎧 Using voice
 
 1. Click **Show voice controls** at the top right.
-2. Click the microphone, allow access, and speak. A 1.3-second pause ends the question; recordings stop after 20 seconds, or after 7 seconds without speech.
+2. Click the microphone, allow access, and speak. A 0.8-second pause ends the question; recordings stop after 20 seconds, or after 7 seconds without speech.
 3. For hands-free activation, enable the wake-word button. Say the wake phrase, wait for the listening prompt, then ask your question.
 4. The speaker button toggles spoken answers. The central cancel button stops an active request, playback, or follow-up recording.
 
@@ -75,7 +75,7 @@ WebKit checks cover model rendering, texture decoding, fallback/retry behavior, 
 
 Answer generation allows up to **180 seconds** and **8,192 output tokens**. Speech uses chunks of at most **1,200 characters**, each played to completion. NVIDIA and network limits can still interrupt requests; errors include the failure cause. If an answer hits the model output limit, ask Jarvis to continue.
 
-“Last answer” measures the chat request, not the full voice round trip. Hosted inference cannot provide a 10 ms end-to-end speech response. The app waits for the complete text answer before speech synthesis.
+“First text” measures time to the first generated text, not the full voice round trip. Hosted inference cannot provide a 10 ms end-to-end speech response. Text streams into chat immediately. Speech synthesis begins at the first complete sentence while the remaining answer generates.
 
 API references: [Parakeet](https://build.nvidia.com/nvidia/parakeet-ctc-1_1b-asr/api) · [Magpie](https://build.nvidia.com/nvidia/magpie-tts-multilingual/api).
 
@@ -97,7 +97,7 @@ The supplied GLB is bundled unchanged. Runtime additions include scene lighting,
 
 ### ⚡ Fast chat configuration
 
-Chat defaults to `nvidia/nemotron-3.5-lightning-30b-a3b` with thinking disabled and short conversational answers by default. Requests explicitly asking for detail retain a larger output budget. Endpoint latency varies; the app waits for the complete answer before speech. Web search and tool execution are not connected.
+Chat defaults to `nvidia/nemotron-3.5-lightning-30b-a3b` with thinking disabled and short conversational answers by default. Requests explicitly asking for detail retain a larger output budget. Endpoint latency varies; text and sentence-level speech begin before the answer finishes. Web search and tool execution are not connected.
 
 ### 🔎 Live model verification
 

@@ -9,7 +9,9 @@ export async function POST(request: Request) {
     const key = authorize(request);
     if (Number(request.headers.get("content-length")) > 120000)
       throw new Error("Conversation too large.");
-    const messages = validateMessages((await request.json()).messages);
+    const body = await request.json();
+    const messages = validateMessages(body.messages);
+    const streaming = body.stream === true;
     const model = process.env.NVIDIA_CHAT_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b";
     const detailed = /\b(detail(?:ed)?|comprehensive|thorough|research|long|step.by.step|explain fully)\b/i.test(messages.at(-1)?.content || "");
     const result = await fetch(
@@ -22,6 +24,7 @@ export async function POST(request: Request) {
         },
         body: JSON.stringify({
           model,
+          stream: streaming,
           messages: [
             {
               role: "system",
@@ -38,6 +41,9 @@ export async function POST(request: Request) {
       },
     );
     if (!result.ok) throw upstreamError(result.status);
+    if (streaming) return new Response(result.body, {headers:{
+      "Content-Type":"text/event-stream", "Cache-Control":"no-cache, no-transform", "X-Accel-Buffering":"no"
+    }});
     const data = await result.json();
     const text = data.choices?.[0]?.message?.content;
     if (!text)
