@@ -26,7 +26,12 @@ export class SpeechPlayer {
     source.connect(this.context.destination);
     source.start();
   }
-  async play(data: ArrayBuffer, signal: AbortSignal, onStart: () => void) {
+  async play(
+    data: ArrayBuffer,
+    signal: AbortSignal,
+    onStart: () => void,
+    onLevel?: (level: number) => void,
+  ) {
     signal.throwIfAborted();
     const context = this.context;
     if (!context || context.state !== "running")
@@ -37,9 +42,12 @@ export class SpeechPlayer {
     source.buffer = buffer;
     source.connect(context.destination);
     await new Promise<void>((resolve, reject) => {
+      let meter: ReturnType<typeof setInterval> | undefined;
       const clean = () => {
         signal.removeEventListener("abort", abort);
         source.disconnect();
+        clearInterval(meter);
+        onLevel?.(0);
       };
       const abort = () => {
         source.onended = null;
@@ -52,7 +60,23 @@ export class SpeechPlayer {
         resolve();
       };
       signal.addEventListener("abort", abort, { once: true });
+      const started = context.currentTime;
       source.start();
+      if (onLevel) {
+        const samples = buffer.getChannelData(0);
+        meter = setInterval(() => {
+          const offset = Math.floor(
+            (context.currentTime - started) * buffer.sampleRate,
+          );
+          const end = Math.min(
+            samples.length,
+            offset + Math.floor(buffer.sampleRate * 0.03),
+          );
+          let sum = 0;
+          for (let i = offset; i < end; i++) sum += samples[i] * samples[i];
+          onLevel(Math.min(1, Math.sqrt(sum / Math.max(1, end - offset)) * 5));
+        }, 40);
+      }
       onStart();
     });
   }

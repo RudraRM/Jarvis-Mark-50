@@ -107,8 +107,11 @@ export default function Home() {
         for (const chunk of speechChunks(result.text)) {
           signal.throwIfAborted();
           const response = await api("/api/speak", { text: chunk }, signal);
-          await speech.current!.play(await response.arrayBuffer(), signal, () =>
-            setPhase("speaking"),
+          await speech.current!.play(
+            await response.arrayBuffer(),
+            signal,
+            () => setPhase("speaking"),
+            setLevel,
           );
         }
       } catch (e) {
@@ -375,6 +378,14 @@ export default function Home() {
                 Wake mode uses browser speech recognition. Questions go to
                 NVIDIA.
               </p>
+              <a
+                className="model-credit"
+                href="https://sketchfab.com/3d-models/iron-man-mark-50-14b72606d50840d7a4125128e73386a6"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Mark 50 model · Tsm / CC BY 4.0
+              </a>
             </div>
             <div className="suggestions">
               <div className="suggestion-label">A place to start</div>

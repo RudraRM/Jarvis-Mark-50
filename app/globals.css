@@ -937,3 +937,21 @@ h1 {
     transition: none !important;
   }
 }
+.model-status {
+  position: absolute;
+  top: 38%;
+  left: 15%;
+  right: 15%;
+  text-align: center;
+  color: #91b5bf;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.model-credit {
+  font-size: 8px;
+  color: #708894;
+}
+.model-credit:hover {
+  color: #a5dce3;
+}

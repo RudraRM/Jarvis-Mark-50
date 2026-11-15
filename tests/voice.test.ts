@@ -109,6 +109,7 @@ test("speech playback waits for audio end and cancellation stops it", async () =
   class FakeAudioContext {
     state = "running";
     sampleRate = 44100;
+    currentTime = 0;
     destination = {};
     resume() {
       return Promise.resolve();
@@ -120,7 +121,11 @@ test("speech playback waits for audio end and cancellation stops it", async () =
       return {};
     }
     decodeAudioData() {
-      return Promise.resolve({ duration: 600 });
+      return Promise.resolve({
+        duration: 600,
+        sampleRate: 16000,
+        getChannelData: () => new Float32Array(16000).fill(0.1),
+      });
     }
     createBufferSource() {
       const source = {
@@ -144,17 +149,33 @@ test("speech playback waits for audio end and cancellation stops it", async () =
     player.unlock();
     let finished = false;
     const ctrl = new AbortController();
+    const levels: number[] = [];
     const playing = player
-      .play(new ArrayBuffer(1), ctrl.signal, () => {})
+      .play(
+        new ArrayBuffer(1),
+        ctrl.signal,
+        () => {},
+        (level) => levels.push(level),
+      )
       .then(() => {
         finished = true;
       });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await new Promise((resolve) => setTimeout(resolve, 80));
     assert.equal(finished, false);
+    assert.ok(
+      levels.some((level) => level > 0.49 && level < 0.51),
+      "Meter follows decoded speech amplitude",
+    );
     sources.at(-1)!.onended!();
     await playing;
     assert.equal(finished, true);
-    const cancelled = player.play(new ArrayBuffer(1), ctrl.signal, () => {});
+    assert.equal(levels.at(-1), 0, "Meter resets after playback");
+    const cancelled = player.play(
+      new ArrayBuffer(1),
+      ctrl.signal,
+      () => {},
+      (level) => levels.push(level),
+    );
     await Promise.resolve();
     ctrl.abort();
     await assert.rejects(cancelled, { name: "AbortError" });
