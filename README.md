@@ -28,7 +28,7 @@ Create or edit `.env.local` in the project root:
 
 ```dotenv
 NVIDIA_API_KEY=your_nvidia_api_key
-NVIDIA_CHAT_MODEL=nvidia/nemotron-3.5-lightning-30b-a3b
+NVIDIA_CHAT_MODEL=z-ai/glm-5.3-flash
 NVIDIA_TTS_VOICE=Magpie-Multilingual.EN-US.Aria
 ```
 
@@ -69,7 +69,7 @@ WebKit checks cover model rendering, texture decoding, fallback/retry behavior, 
 | Stage | Service |
 | --- | --- |
 | Speech to text | NVIDIA Parakeet CTC 1.1B |
-| Answer generation | NVIDIA Nemotron 3.5 Lightning, configurable through `NVIDIA_CHAT_MODEL` |
+| Answer generation | GLM-5.3-Flash on NVIDIA, configurable through `NVIDIA_CHAT_MODEL` |
 | Text to speech | NVIDIA Magpie Multilingual, configurable through `NVIDIA_TTS_VOICE` |
 | Visualization | Three.js + the supplied Mark 50 GLB |
 
@@ -94,3 +94,7 @@ Tests cover conversation validation, origin checks, wake-listener handoff and re
 **Iron Man mark 50** by [Tsm](https://sketchfab.com/silwalkrishnaa9), from [Sketchfab](https://sketchfab.com/3d-models/iron-man-mark-50-14b72606d50840d7a4125128e73386a6), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 The supplied GLB is bundled unchanged. Runtime additions include scene lighting, normalized framing, a fitted reactor, and a chest-emission mask. The preview image is rendered from the same model. See [full asset attribution](public/models/ATTRIBUTION.md).
+
+### ⚡ Fast chat configuration
+
+Chat defaults to `z-ai/glm-5.3-flash`. It uses NVIDIA’s documented `reasoning_effort: "low"` and `clear_thinking: true` settings, with short conversational answers by default. Requests explicitly asking for detail or research retain a larger output budget. This reduces generation work but does not guarantee endpoint latency; the app still waits for the complete answer before speech. Web search and tool execution are not connected, so this setting alone does not enable live research.

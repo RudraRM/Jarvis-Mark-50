@@ -10,6 +10,8 @@ export async function POST(request: Request) {
     if (Number(request.headers.get("content-length")) > 120000)
       throw new Error("Conversation too large.");
     const messages = validateMessages((await request.json()).messages);
+    const model = process.env.NVIDIA_CHAT_MODEL || "z-ai/glm-5.3-flash";
+    const detailed = /\b(detail(?:ed)?|comprehensive|thorough|research|long|step.by.step|explain fully)\b/i.test(messages.at(-1)?.content || "");
     const result = await fetch(
       "https://integrate.api.nvidia.com/v1/chat/completions",
       {
@@ -19,19 +21,19 @@ export async function POST(request: Request) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model:
-            process.env.NVIDIA_CHAT_MODEL ||
-            "nvidia/nemotron-3.5-lightning-30b-a3b",
+          model,
           messages: [
             {
               role: "system",
               content:
-                "You are Jarvis, a calm, capable personal AI assistant. Answer accurately. Be concise for simple questions, but provide a complete, detailed response when requested. Do not pretend to have live data or device control.",
+                "You are Jarvis, a calm, capable personal AI assistant. Answer directly and accurately. For everyday conversation, use 1–3 short sentences and skip introductions and restating the question. Provide detailed responses only when requested. Do not pretend to have live data or device control.",
             },
             ...messages,
           ],
-          max_tokens: 8192,
-          chat_template_kwargs: { enable_thinking: false },
+          max_tokens: detailed ? 8192 : 4096,
+          ...(model === "z-ai/glm-5.3-flash"
+            ? { reasoning_effort: "low", chat_template_kwargs: { clear_thinking: true } }
+            : { chat_template_kwargs: { enable_thinking: false } }),
           temperature: 0.6,
         }),
         signal: AbortSignal.any([request.signal, AbortSignal.timeout(180000)]),
