@@ -107,7 +107,7 @@ export default function Reactor({
     // This shallow insert follows the chest slope, inside the existing aperture.
     reactor.position.set(0, 1.29, 0.414);
     reactor.rotation.x = 0.397;
-    reactor.scale.setScalar(0.033);
+    reactor.scale.setScalar(0.041);
     reactor.visible = false;
     const cyan = new THREE.MeshStandardMaterial({
       color: 0x8df5ff,
@@ -258,7 +258,9 @@ export default function Reactor({
         stars.rotation.z = time * 0.000006;
       }
       // Silence is dim; only measured voice energy lights the chest.
-      const power = e.active ? .08 + Math.max(0, e.level - .025) * 5 : .08;
+      const amplitude = Math.max(0, e.level - .025);
+      const flicker = reduced ? 1 : .65 + .35 * Math.sin(time * .045) * Math.sin(time * .019);
+      const power = e.active && amplitude > 0 ? .025 + amplitude * 10 * flicker : .025;
       cyan.emissiveIntensity = power * 1.5;
       chestMaterials.forEach((material) => {
         material.emissiveIntensity = power;

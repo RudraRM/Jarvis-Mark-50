@@ -34,8 +34,10 @@ export class SpeechPlayer {
   ) {
     signal.throwIfAborted();
     const context = this.context;
-    if (!context || context.state !== "running")
-      throw new Error("Click to enable audio playback.");
+    if (!context) throw new Error("Open voice controls and click the microphone to enable audio playback.");
+    if (context.state === "suspended") await context.resume();
+    signal.throwIfAborted();
+    if (context.state !== "running") throw new Error("Browser audio is paused. Click the microphone to resume.");
     const buffer = await context.decodeAudioData(data);
     signal.throwIfAborted();
     const source = context.createBufferSource();

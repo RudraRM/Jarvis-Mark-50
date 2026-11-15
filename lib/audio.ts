@@ -52,7 +52,8 @@ export async function recordQuestion(
           (!heard && now - start > 7000)
         ) {
           cleanup();
-          resolve();
+          if (!heard) reject(new Error("No speech detected. Click the microphone when you’re ready to reply."));
+          else resolve();
         }
       }, 100);
     });

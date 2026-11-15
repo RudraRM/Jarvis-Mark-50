@@ -103,6 +103,7 @@ export default function Home() {
     ];
     history.current = updated;
     setMessages(updated);
+    let spoken = !voiceRef.current;
     if (voiceRef.current) {
       try {
         for (const chunk of speechChunks(result.text)) {
@@ -115,13 +116,14 @@ export default function Home() {
             setLevel,
           );
         }
+        spoken = true;
       } catch (e) {
         if (signal.aborted) throw e;
-        setError(
-          "Voice output is unavailable. Your answer is in the conversation.",
-        );
+        setError(`Speech could not finish: ${e instanceof Error ? e.message : 'Audio service failed'}. Your answer remains in chat.`);
+        setShowControls(true);
       }
     }
+    return spoken && /[?？]$/.test(result.text.trim().replace(/["”’\x27)*\]]+$/, "").trim());
   }
   async function run(text?: string) {
     if (busy.current) return;
@@ -141,9 +143,11 @@ export default function Home() {
     try {
       await recognition.current?.pause();
       ctrl.signal.throwIfAborted();
-      if (text) {
-        await answer(text, ctrl.signal);
-      } else {
+      let followUp = false;
+      if (text) followUp = await answer(text, ctrl.signal);
+      while (!text || followUp) {
+        text = undefined;
+        setShowControls(true);
         setPhase("listening");
         const blob = await recordQuestion(setLevel, ctrl.signal);
         setPhase("transcribing");
@@ -161,7 +165,8 @@ export default function Home() {
           throw new Error(
             "No question detected. Please try again or type below.",
           );
-        await answer(question, ctrl.signal);
+        followUp = await answer(question, ctrl.signal);
+        if (!followUp || document.hidden) break;
       }
     } catch (e) {
       if (!ctrl.signal.aborted)

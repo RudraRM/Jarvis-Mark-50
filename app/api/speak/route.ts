@@ -19,7 +19,7 @@ export async function POST(request: Request) {
         method: "POST",
         headers: { Authorization: `Bearer ${key}` },
         body: form,
-        signal: AbortSignal.any([request.signal, AbortSignal.timeout(120000)]),
+        signal: request.signal,
       },
     );
     if (!result.ok) throw upstreamError(result.status);
