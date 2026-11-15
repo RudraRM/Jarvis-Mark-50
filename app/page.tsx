@@ -32,7 +32,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [phase, setPhase] = useState<Phase>("standby");
   const [error, setError] = useState("");
-  const [showModel, setShowModel] = useState(true);
+  const [showControls, setShowControls] = useState(false);
   const [wake, setWake] = useState(false);
   const [voice, setVoice] = useState(true);
   const [level, setLevel] = useState(0);
@@ -295,14 +295,14 @@ export default function Home() {
           <div className="breadcrumb">
             WORKSPACE <span>/</span> <b>COMMAND CENTER</b>
           </div>
-          <button className="model-toggle" aria-pressed={showModel} onClick={() => setShowModel(value => !value)}>{showModel ? "Hide Iron Man" : "Show Iron Man"}</button>
+          <button className="model-toggle" aria-expanded={showControls} aria-controls="jarvis-voice-controls" onClick={() => setShowControls(value => !value)}>{showControls ? "Hide voice controls" : "Show voice controls"}</button>
           <div className="system-status">
             <span className="green-dot" /> INTERFACE READY
           </div>
         </header>
         <div className="workspace-body">
-          <section className={"command-stage " + (showModel ? "model-expanded" : "model-hidden")}>
-            {showModel && <Reactor active={phase === "listening" || phase === "speaking"} level={level} />}
+          <section className={"command-stage model-expanded " + (showControls ? "controls-visible" : "controls-hidden")}>
+            <Reactor active={phase === "listening" || phase === "speaking"} level={level} />
             <div className="stage-top">
               <span className="eyebrow">PERSONAL INTELLIGENCE INTERFACE</span>
               <span className="version">
@@ -322,7 +322,7 @@ export default function Home() {
                 <br />
                 <span>NEURAL INTERFACE</span>
               </div>
-              <div className="hero-copy">
+              <div className="hero-copy" hidden={!showControls}>
                 <div className="online-tag">
                   <span />{" "}
                   {phase === "standby" ? "JARVIS ONLINE" : phase.toUpperCase()}
@@ -337,7 +337,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="interaction">
+            <div className="interaction" id="jarvis-voice-controls" hidden={!showControls}>
               <div className="voice-controls">
                 <button
                   title={

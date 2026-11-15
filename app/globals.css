@@ -962,3 +962,10 @@ h1 {
 .model-expanded .hero-copy{text-shadow:0 2px 12px #000;background:linear-gradient(transparent,#050709b8)}
 .model-expanded .interaction,.model-expanded .suggestions,.model-expanded .telemetry{position:relative;background:#050709b8}
 @media(max-width:700px){.model-toggle{padding:6px;font-size:9px;margin-right:8px}.model-expanded{min-height:780px}.model-expanded .hero{height:380px}.model-expanded>.reactor-canvas{inset:0}}
+
+/* The screenshot's greeting and microphone panel is optional; the suit stays visible. */
+.model-expanded .hero-copy[hidden],.model-expanded .interaction[hidden]{display:none}
+.model-expanded.controls-hidden .hero{flex:1;min-height:500px;height:auto}
+.model-expanded.controls-hidden .suggestions{margin-top:auto}
+.model-expanded.controls-hidden>.reactor-canvas{bottom:65px}
+@media(max-width:700px){.model-expanded.controls-hidden .hero{min-height:550px}}
