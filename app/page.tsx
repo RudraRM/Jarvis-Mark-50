@@ -253,7 +253,7 @@ export default function Home() {
         <a className="brand" href="/" aria-label="Jarvis home">
           <span className="brand-icon">J</span>
           <span>
-            Jarvis<small>MARK V</small>
+            Jarvis<small>MARK 50</small>
           </span>
         </a>
         <div className="nav-caption">WORKSPACE</div>
@@ -289,7 +289,7 @@ export default function Home() {
           <div className="profile">
             <div className="avatar">R</div>
             <div>
-              Personal workspace<small>JARVIS / V.01</small>
+              Personal workspace<small>JARVIS / MARK 50</small>
             </div>
             <span className="green-dot" />
           </div>
@@ -311,7 +311,7 @@ export default function Home() {
             <div className="stage-top">
               <span className="eyebrow">PERSONAL INTELLIGENCE INTERFACE</span>
               <span className="version">
-                MK. V <span>↗</span>
+                MK. L <span>↗</span>
               </span>
             </div>
             <div className="hero">
