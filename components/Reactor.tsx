@@ -86,16 +86,20 @@ export default function Reactor({
     setStatus("loading");
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "default" });
     } catch {
       setStatus("error");
       return;
     }
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.35;
     host.appendChild(renderer.domElement);
+    const lost = (event: Event) => { event.preventDefault(); setStatus("error"); };
+    const restored = () => setAttempt(value => value + 1);
+    renderer.domElement.addEventListener("webglcontextlost", lost);
+    renderer.domElement.addEventListener("webglcontextrestored", restored);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
     camera.position.set(0, 0, 10);
@@ -202,7 +206,8 @@ export default function Reactor({
               material instanceof THREE.MeshStandardMaterial &&
               material.map
             ) {
-              material.emissiveMap = chestEmission(material.map);
+              try { material.emissiveMap = chestEmission(material.map); }
+              catch { /* Preserve the textured suit even if Safari rejects canvas texture readback. */ }
               material.emissive.set(0xffffff);
               material.emissiveIntensity = 1;
               chestMaterials.push(material);
@@ -276,12 +281,15 @@ export default function Reactor({
       cancelAnimationFrame(frame);
       observer.disconnect();
       disposeObject(scene);
+      renderer.domElement.removeEventListener("webglcontextlost", lost);
+      renderer.domElement.removeEventListener("webglcontextrestored", restored);
       renderer.dispose();
       host.replaceChildren();
     };
   }, [attempt]);
   return (
     <>
+      {status !== "ready" && <div className="suit-preview" role="img" aria-label="Preview of Iron Man Mark 50; live 3D is not yet available" />}
       <div
         className="reactor-canvas"
         ref={mount}
@@ -293,7 +301,7 @@ export default function Reactor({
         <span className="model-status" role="status">
           {status === "loading"
             ? "Loading Mark 50…"
-            : "3D model unavailable. Check WebGL support and reload the model."}
+            : "Showing suit preview. Live 3D is unavailable; try reloading the model."}
           {status === "error" && <button className="model-retry" onClick={() => setAttempt(value => value + 1)}>Reload Mark 50</button>}
         </span>
       )}

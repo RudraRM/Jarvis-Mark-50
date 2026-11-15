@@ -973,3 +973,6 @@ h1 {
 .model-expanded > .stage-top,.model-expanded > .hero,.model-expanded > .interaction,.model-expanded > .suggestions,.model-expanded > .telemetry {position:relative;z-index:1;}
 .model-expanded > .model-status {z-index:2;}
 .model-retry {display:block;margin:12px auto;background:#14313b;border:1px solid #739da9;border-radius:6px;padding:9px 14px;color:#d2f8ff;}
+.model-expanded > .suit-preview {position:absolute;inset:0 0 65px;z-index:0;pointer-events:none;background:url('/models/mark-50-preview.png') center/contain no-repeat;}
+.model-expanded > .reactor-canvas[data-model-status="loading"],.model-expanded > .reactor-canvas[data-model-status="error"] {visibility:hidden;}
+.model-expanded > .model-status {top:auto;bottom:125px;padding:12px;background:#081016e6;border-radius:8px;}
