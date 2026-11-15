@@ -72,6 +72,7 @@ export default function Reactor({
   active: boolean;
   level: number;
 }) {
+  const [attempt, setAttempt] = useState(0);
   const mount = useRef<HTMLDivElement>(null);
   const energy = useRef({ active, level });
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
@@ -82,6 +83,7 @@ export default function Reactor({
   }, [active, level]);
   useEffect(() => {
     const host = mount.current!;
+    setStatus("loading");
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
@@ -277,7 +279,7 @@ export default function Reactor({
       renderer.dispose();
       host.replaceChildren();
     };
-  }, []);
+  }, [attempt]);
   return (
     <>
       <div
@@ -291,7 +293,8 @@ export default function Reactor({
         <span className="model-status" role="status">
           {status === "loading"
             ? "Loading Mark 50…"
-            : "3D model unavailable. Voice and chat are still available."}
+            : "3D model unavailable. Check WebGL support and reload the model."}
+          {status === "error" && <button className="model-retry" onClick={() => setAttempt(value => value + 1)}>Reload Mark 50</button>}
         </span>
       )}
     </>
