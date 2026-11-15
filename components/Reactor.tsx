@@ -21,14 +21,9 @@ function disposeObject(root: THREE.Object3D) {
     });
     if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose();
   });
-  textures.forEach((texture) => {
-    texture.dispose();
-    if (
-      typeof ImageBitmap !== "undefined" &&
-      texture.image instanceof ImageBitmap
-    )
-      texture.image.close();
-  });
+  // GLTFLoader may share decoded images between Strict Mode loads.
+  // Dispose GPU textures, but do not close a bitmap still used by another load.
+  textures.forEach(texture => texture.dispose());
 }
 
 // The supplied GLB has one atlas material. Mask only its chest aperture,
@@ -96,8 +91,16 @@ export default function Reactor({
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.35;
     host.appendChild(renderer.domElement);
-    const lost = (event: Event) => { event.preventDefault(); setStatus("error"); };
-    const restored = () => setAttempt(value => value + 1);
+    let failed = false;
+    let modelLoaded = false;
+    let announcedReady = false;
+    const lost = (event: Event) => {
+      event.preventDefault();
+      failed = true;
+      setStatus("error");
+    };
+    // Recovery is explicit: a restore event must not recreate contexts in a loop.
+    const restored = () => {};
     renderer.domElement.addEventListener("webglcontextlost", lost);
     renderer.domElement.addEventListener("webglcontextrestored", restored);
     const scene = new THREE.Scene();
@@ -216,11 +219,11 @@ export default function Reactor({
         });
         avatar.add(model);
         reactor.visible = true;
-        setStatus("ready");
+        modelLoaded = true;
       },
       undefined,
       () => {
-        if (!disposed) setStatus("error");
+        if (!disposed) { failed = true; setStatus("error"); }
       },
     );
     const positions = new Float32Array(1800);
@@ -258,6 +261,7 @@ export default function Reactor({
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     let frame = 0;
     function animate(time: number) {
+      if (disposed || failed) return;
       frame = requestAnimationFrame(animate);
       const e = energy.current;
       if (!reduced) {
@@ -273,7 +277,16 @@ export default function Reactor({
         material.emissiveIntensity = power;
       });
       chestLight.intensity = 0.04 * power;
-      renderer.render(scene, camera);
+      try {
+        renderer.render(scene, camera);
+        if (modelLoaded && !announcedReady && !renderer.getContext().isContextLost()) {
+          announcedReady = true;
+          setStatus("ready");
+        }
+      } catch {
+        failed = true;
+        setStatus("error");
+      }
     }
     frame = requestAnimationFrame(animate);
     return () => {
