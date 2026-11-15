@@ -28,10 +28,10 @@ export function validateMessages(value: unknown): Message[] {
       !["user", "assistant"].includes(m.role) ||
       typeof m.content !== "string" ||
       !m.content.trim() ||
-      m.content.length > 4000
+      m.content.length > (m.role === "assistant" ? 60000 : 4000)
     )
       throw new Error(
-        "Invalid message. Limit each message to 4,000 characters.",
+        "Invalid message. User messages allow 4,000 characters; assistant history allows 60,000.",
       );
     return { role: m.role, content: m.content };
   });

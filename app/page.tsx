@@ -17,27 +17,8 @@ import {
 import Reactor from "@/components/Reactor";
 import { recordQuestion } from "@/lib/audio";
 import type { Message } from "@/lib/server";
-interface Recognition {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onresult:
-    | ((e: {
-        results: { isFinal: boolean; 0: { transcript: string } }[];
-        resultIndex: number;
-      }) => void)
-    | null;
-  onerror: ((e: { error: string }) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  abort: () => void;
-}
-declare global {
-  interface Window {
-    SpeechRecognition?: new () => Recognition;
-    webkitSpeechRecognition?: new () => Recognition;
-  }
-}
+import { WakeListener } from "@/lib/wake";
+import { SpeechPlayer, speechChunks } from "@/lib/speech";
 type Phase = "standby" | "listening" | "transcribing" | "thinking" | "speaking";
 const labels: Record<Phase, string> = {
   standby: "At your service.",
@@ -58,10 +39,10 @@ export default function Home() {
   const [chatOpen, setChatOpen] = useState(true);
   const busy = useRef(false);
   const controller = useRef<AbortController | null>(null);
-  const audio = useRef<HTMLAudioElement | null>(null);
+  const speech = useRef<SpeechPlayer | null>(null);
   const history = useRef<Message[]>([]);
   const voiceRef = useRef(voice);
-  const recognition = useRef<Recognition | null>(null);
+  const recognition = useRef<WakeListener | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
   const askRef = useRef<() => void>(() => {});
   useEffect(() => {
@@ -73,8 +54,9 @@ export default function Home() {
   useEffect(
     () => () => {
       controller.current?.abort();
-      audio.current?.pause();
-      recognition.current?.abort();
+
+      recognition.current?.dispose();
+      speech.current?.dispose();
     },
     [],
   );
@@ -98,9 +80,21 @@ export default function Home() {
     setMessages(next);
     setPhase("thinking");
     const start = performance.now();
+    const recent = next.slice(-24);
+    // Keep long-answer follow-ups within the server request budget.
+    while (
+      recent.length > 1 &&
+      new TextEncoder().encode(JSON.stringify({ messages: recent })).length >
+        110000
+    )
+      recent.shift();
     const result = await (
-      await api("/api/chat", { messages: next.slice(-24) }, signal)
+      await api("/api/chat", { messages: recent }, signal)
     ).json();
+    if (result.truncated)
+      setError(
+        "The answer reached the model’s output limit. Ask Jarvis to continue for the rest.",
+      );
     setLatency(Math.round(performance.now() - start));
     const updated: Message[] = [
       ...next,
@@ -110,39 +104,12 @@ export default function Home() {
     setMessages(updated);
     if (voiceRef.current) {
       try {
-        const response = await api("/api/speak", { text: result.text }, signal);
-        const url = URL.createObjectURL(await response.blob());
-        const player = new Audio(url);
-        audio.current = player;
-        try {
+        for (const chunk of speechChunks(result.text)) {
           signal.throwIfAborted();
-          await new Promise<void>((resolve, reject) => {
-            const aborted = () => {
-              player.pause();
-              reject(new DOMException("Aborted", "AbortError"));
-            };
-            signal.addEventListener("abort", aborted, { once: true });
-            const clean = () => signal.removeEventListener("abort", aborted);
-            player.onended = () => {
-              clean();
-              resolve();
-            };
-            player.onerror = () => {
-              clean();
-              reject(new Error("Audio playback unavailable."));
-            };
-            player
-              .play()
-              .then(() => setPhase("speaking"))
-              .catch((e) => {
-                clean();
-                reject(e);
-              });
-          });
-        } finally {
-          player.pause();
-          URL.revokeObjectURL(url);
-          audio.current = null;
+          const response = await api("/api/speak", { text: chunk }, signal);
+          await speech.current!.play(await response.arrayBuffer(), signal, () =>
+            setPhase("speaking"),
+          );
         }
       } catch (e) {
         if (signal.aborted) throw e;
@@ -154,12 +121,22 @@ export default function Home() {
   }
   async function run(text?: string) {
     if (busy.current) return;
+    if (voiceRef.current) {
+      try {
+        speech.current ??= new SpeechPlayer();
+        speech.current.unlock();
+      } catch {
+        /* Chat remains available without audio. */
+      }
+    }
     busy.current = true;
+    setPhase(text ? "thinking" : "listening");
     setError("");
-    recognition.current?.abort();
     const ctrl = new AbortController();
     controller.current = ctrl;
     try {
+      await recognition.current?.pause();
+      ctrl.signal.throwIfAborted();
       if (text) {
         await answer(text, ctrl.signal);
       } else {
@@ -193,81 +170,68 @@ export default function Home() {
       busy.current = false;
       setPhase("standby");
       controller.current = null;
+      if (!document.hidden) recognition.current?.start();
     }
   }
   askRef.current = () => {
     void run();
   };
-  useEffect(() => {
-    if (!wake) return;
+  function toggleWake() {
+    if (wake) {
+      recognition.current?.dispose();
+      recognition.current = null;
+      setWake(false);
+      return;
+    }
     const Constructor =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Constructor) {
       setError(
-        "Wake words are not supported in this browser. Use the microphone button or chat.",
+        "This browser does not expose speech recognition. Open Jarvis in Safari 16.4+ or Chrome, or use push-to-talk/chat.",
       );
-      setWake(false);
       return;
     }
-    const rec = new Constructor();
-    recognition.current = rec;
-    rec.continuous = true;
-    rec.interimResults = false;
-    rec.lang = "en-US";
-    let disposed = false;
-    let timer: ReturnType<typeof setTimeout>;
-    rec.onresult = (e) => {
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (
-          e.results[i].isFinal &&
-          /\b(?:hey\s+)?jarvis\b/i.test(e.results[i][0].transcript) &&
-          !busy.current
-        ) {
-          rec.abort();
-          askRef.current();
-          break;
-        }
-      }
+    setError("");
+    try {
+      speech.current ??= new SpeechPlayer();
+      speech.current.unlock();
+      const listener = new WakeListener(
+        new Constructor(),
+        () => askRef.current(),
+        (message) => {
+          setError(message);
+          setWake(false);
+          recognition.current = null;
+        },
+      );
+      recognition.current = listener;
+      setWake(true);
+      listener.start(); // Synchronous user activation is required by Safari.
+    } catch {
+      setWake(false);
+      setError(
+        "Wake listening could not start. Check Safari microphone permissions.",
+      );
+    }
+  }
+  useEffect(() => {
+    const visibility = () => {
+      if (document.hidden)
+        void recognition.current
+          ?.pause()
+          .then(() => {
+            if (!document.hidden && !busy.current) recognition.current?.start();
+          })
+          .catch(() => {
+            setWake(false);
+          });
+      else if (!busy.current) recognition.current?.start();
     };
-    rec.onerror = (e) => {
-      if (
-        ["not-allowed", "service-not-allowed", "audio-capture"].includes(
-          e.error,
-        )
-      ) {
-        setError(
-          "Wake-word microphone access failed. Use chat or allow microphone access.",
-        );
-        setWake(false);
-      }
-    };
-    const start = () => {
-      if (disposed) return;
-      if (!busy.current) {
-        try {
-          rec.start();
-        } catch {
-          /* Restart after the current session finishes. */
-        }
-      } else {
-        timer = setTimeout(start, 500);
-      }
-    };
-    rec.onend = () => {
-      if (!disposed) timer = setTimeout(start, 500);
-    };
-    start();
-    return () => {
-      disposed = true;
-      clearTimeout(timer);
-      rec.onend = null;
-      rec.abort();
-      recognition.current = null;
-    };
-  }, [wake]);
+    document.addEventListener("visibilitychange", visibility);
+    return () => document.removeEventListener("visibilitychange", visibility);
+  }, []);
   const cancel = () => {
     controller.current?.abort();
-    audio.current?.pause();
   };
   const prompts = [
     "Explain something complex",
@@ -397,7 +361,8 @@ export default function Home() {
                 <button
                   title="Toggle wake-word listening"
                   className={"round secondary " + (wake ? "enabled" : "")}
-                  onClick={() => setWake(!wake)}
+                  onClick={toggleWake}
+                  disabled={phase !== "standby"}
                 >
                   {wake ? <AudioLines size={20} /> : <MicOff size={19} />}
                 </button>

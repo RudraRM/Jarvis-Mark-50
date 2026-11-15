@@ -26,15 +26,15 @@ export async function POST(request: Request) {
             {
               role: "system",
               content:
-                "You are Jarvis, a calm, capable personal AI assistant. Answer accurately and concisely, usually in 2–4 sentences. Do not pretend to have live data or device control.",
+                "You are Jarvis, a calm, capable personal AI assistant. Answer accurately. Be concise for simple questions, but provide a complete, detailed response when requested. Do not pretend to have live data or device control.",
             },
             ...messages,
           ],
-          max_tokens: 1024,
+          max_tokens: 8192,
           chat_template_kwargs: { enable_thinking: false },
           temperature: 0.6,
         }),
-        signal: AbortSignal.any([request.signal, AbortSignal.timeout(60000)]),
+        signal: AbortSignal.any([request.signal, AbortSignal.timeout(180000)]),
       },
     );
     if (!result.ok) throw upstreamError(result.status);
@@ -42,7 +42,10 @@ export async function POST(request: Request) {
     const text = data.choices?.[0]?.message?.content;
     if (!text)
       throw new Error("NVIDIA returned an empty answer. Please try again.");
-    return Response.json({ text });
+    return Response.json({
+      text,
+      truncated: data.choices?.[0]?.finish_reason === "length",
+    });
   } catch (error) {
     return failure(error);
   }

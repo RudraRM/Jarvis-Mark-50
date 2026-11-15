@@ -19,7 +19,7 @@ The server binds to loopback by default. This is a personal local app, not an au
 ## Talking to Jarvis
 
 - Click the central microphone and allow access. Speak your question; 1.3 seconds of silence finishes the recording. Recording stops after 20 seconds, or 7 seconds without speech.
-- Enable the wake-word button to listen for **Jarvis** or **Hey Jarvis**. Say the wake phrase, pause until **I’m listening**, then speak the question. Browser speech recognition detects the wake phrase; the question itself is transcribed by NVIDIA Parakeet. Wake mode is opt-in, depends on browser support (typically Chrome/Edge), and may send audio to the browser vendor’s recognition service. It is not an offline keyword detector.
+- Enable the wake-word button to listen for **Jarvis** or **Hey Jarvis**. Say the wake phrase, pause until **I’m listening**, then speak the question. Browser speech recognition detects the wake phrase; the question itself is transcribed by NVIDIA Parakeet. Wake mode is opt-in, supports the prefixed Safari recognition API as well as Chrome/Edge, and may send audio to the browser vendor’s recognition service. It is not an offline keyword detector.
 - NVIDIA NIM produces the answer, then NVIDIA Magpie synthesizes its default configured voice (Aria). The reactor pulses during processing and playback. Audio playback may require another user gesture on some browsers.
 - Text chat always works independently of microphone support. Speech failures leave the answer visible. Disable spoken answers with the speaker button. Cancel an active request with the central button.
 - Bottom-left full-screen control toggles the browser Fullscreen API. On mobile it appears in the compact top navigation.
@@ -38,7 +38,7 @@ NVIDIA models require account access and available quota. Model availability and
 
 The UI calls Next.js routes. Chat uses NVIDIA’s OpenAI-compatible HTTP endpoint; TTS uses Magpie’s multipart HTTP endpoint. ASR sends mono 16 kHz PCM WAV to NVIDIA Parakeet CTC 1.1B’s multipart HTTP endpoint. No recordings or conversation history are persisted. Wake detection pauses while Jarvis processes or speaks to avoid feedback.
 
-**Latency:** a 10 ms end-to-end voice response is not achievable over these hosted services. Speech duration, silence detection, network travel, model inference, and synthesis all add latency. “Last answer” measures the chat request only, not the full voice round trip. Timeouts and cancellation prevent indefinitely blocked controls. The current implementation waits for each complete answer before synthesis; it does not claim streaming or a latency SLA.
+**Latency:** a 10 ms end-to-end voice response is not achievable over these hosted services. Speech duration, silence detection, network travel, model inference, and synthesis all add latency. “Last answer” measures the chat request only, not the full voice round trip. Timeouts and cancellation prevent indefinitely blocked controls. The app allows 180 seconds and up to 8,192 output tokens for answer generation. It waits for the complete answer, then synthesizes ordered chunks of at most 1,200 characters (120 seconds per synthesis request). Each audio chunk plays until it ends; there is no fixed playback cutoff. Cancel stops the sequence. Model-limit truncation is shown explicitly; ask Jarvis to continue. This is not streaming generation and has no latency SLA.
 
 ## Checks
 
@@ -49,3 +49,11 @@ npm run build
 ```
 
 Validation tests cover role restrictions, input limits, and origin protection. Live NVIDIA access and microphone permissions must also be checked in your own browser. A lost/expired key produces a visible error rather than a fabricated answer.
+
+## Safari wake-word setup and verification
+
+Use current macOS Safari (16.4+), open localhost, allow microphone access in Safari’s website settings, and enable Siri/Dictation in macOS if recognition is unavailable. Click the wake-word button once; this starts recognition and unlocks audio directly from the gesture. Say “Hey Jarvis”, wait for “I’m listening”, then ask your question. The app waits for recognition to release the microphone before recording. Wake listening uses short sessions that restart after silence, pauses during answers, and pauses while the tab is hidden. Keep the tab foregrounded for hands-free use. An embedded WebKit browser may not expose Apple's speech recognition service even if Safari does.
+
+Manual acceptance on a Mac: enable wake mode, try both wake phrases, ask two successive questions, verify that Jarvis does not wake itself during speech, hide/restore the tab, deny/re-enable microphone permission, request a long answer, and cancel it mid-playback. Automated recognition tests use a simulated prefixed API; they cannot certify Apple's speech service or physical microphone permissions. Actual macOS Safari voice verification requires a Mac.
+
+Verification for this update: production build and 10 unit tests passed. Linux WebKit browser checks passed for gesture-initiated startup with a simulated `webkitSpeechRecognition`, permission-error recovery, long-text rendering, and all seven ordered audio chunks using test WAV responses. Chromium also passed the prefixed-API and long-text checks. These do not constitute a live macOS Safari microphone/Siri test.
