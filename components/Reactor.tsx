@@ -67,6 +67,7 @@ export default function Reactor({
   active: boolean;
   level: number;
 }) {
+  const [failureReason, setFailureReason] = useState("");
   const [attempt, setAttempt] = useState(0);
   const mount = useRef<HTMLDivElement>(null);
   const energy = useRef({ active, level });
@@ -79,14 +80,16 @@ export default function Reactor({
   useEffect(() => {
     const host = mount.current!;
     setStatus("loading");
+    setFailureReason("");
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "default" });
     } catch {
+      setFailureReason("Safari could not start WebGL 2. Check Safari graphics support and reload this page.");
       setStatus("error");
       return;
     }
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+    renderer.setPixelRatio(1);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.35;
@@ -97,6 +100,7 @@ export default function Reactor({
     const lost = (event: Event) => {
       event.preventDefault();
       failed = true;
+      setFailureReason("Safari lost its graphics context. Close other graphics-heavy tabs, then reload the model.");
       setStatus("error");
     };
     // Recovery is explicit: a restore event must not recreate contexts in a loop.
@@ -185,7 +189,16 @@ export default function Reactor({
     scene.add(rim);
     const chestMaterials: THREE.MeshStandardMaterial[] = [];
     let disposed = false;
-    new GLTFLoader().load(
+    const loader = new GLTFLoader();
+    // Use the native HTML image decoder consistently, including Safari 17+.
+    // ImageBitmap support alone does not guarantee embedded GLB decoding works.
+    loader.register(parser => {
+      parser.textureLoader = new THREE.TextureLoader(parser.options.manager)
+        .setCrossOrigin(parser.options.crossOrigin)
+        .setRequestHeader(parser.options.requestHeader);
+      return {name: "JARVIS_native_texture_decoder"};
+    });
+    loader.load(
       "/models/iron-man-mark-50.glb",
       (gltf) => {
         if (disposed) {
@@ -222,8 +235,12 @@ export default function Reactor({
         modelLoaded = true;
       },
       undefined,
-      () => {
-        if (!disposed) { failed = true; setStatus("error"); }
+      (error) => {
+        if (!disposed) {
+          failed = true;
+          setFailureReason(error instanceof Error ? error.message : "The model could not be downloaded or decoded.");
+          setStatus("error");
+        }
       },
     );
     const positions = new Float32Array(1800);
@@ -283,8 +300,9 @@ export default function Reactor({
           announcedReady = true;
           setStatus("ready");
         }
-      } catch {
+      } catch (error) {
         failed = true;
+        setFailureReason(error instanceof Error ? error.message : "Safari could not render the model.");
         setStatus("error");
       }
     }
@@ -315,6 +333,7 @@ export default function Reactor({
           {status === "loading"
             ? "Loading Mark 50…"
             : "Showing suit preview. Live 3D is unavailable; try reloading the model."}
+          {status === "error" && <small className="model-error-detail">{failureReason}</small>}
           {status === "error" && <button className="model-retry" onClick={() => setAttempt(value => value + 1)}>Reload Mark 50</button>}
         </span>
       )}

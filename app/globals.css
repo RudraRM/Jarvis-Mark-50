@@ -976,3 +976,4 @@ h1 {
 .model-expanded > .suit-preview {position:absolute;inset:0 0 65px;z-index:0;pointer-events:none;background:url('/models/mark-50-preview.png') center/contain no-repeat;}
 .model-expanded > .reactor-canvas[data-model-status="loading"],.model-expanded > .reactor-canvas[data-model-status="error"] {visibility:hidden;}
 .model-expanded > .model-status {top:auto;bottom:125px;padding:12px;background:#081016e6;border-radius:8px;}
+.model-error-detail{display:block;margin-top:6px;overflow-wrap:anywhere;color:#bccbd1;line-height:1.5}
