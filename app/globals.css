@@ -955,3 +955,10 @@ h1 {
 .model-credit:hover {
   color: #a5dce3;
 }
+.model-toggle{margin-left:auto;margin-right:18px;background:#102127;border:1px solid #36535d;color:#a5dce3;border-radius:6px;padding:8px 12px;font-size:11px}
+.model-expanded{min-height:calc(100dvh - 79px);isolation:isolate}
+.model-expanded>.reactor-canvas{inset:0;z-index:-1;pointer-events:none}
+.model-expanded .hero{height:445px;pointer-events:none}
+.model-expanded .hero-copy{text-shadow:0 2px 12px #000;background:linear-gradient(transparent,#050709b8)}
+.model-expanded .interaction,.model-expanded .suggestions,.model-expanded .telemetry{position:relative;background:#050709b8}
+@media(max-width:700px){.model-toggle{padding:6px;font-size:9px;margin-right:8px}.model-expanded{min-height:780px}.model-expanded .hero{height:380px}.model-expanded>.reactor-canvas{inset:0}}

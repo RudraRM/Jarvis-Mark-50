@@ -32,6 +32,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [phase, setPhase] = useState<Phase>("standby");
   const [error, setError] = useState("");
+  const [showModel, setShowModel] = useState(true);
   const [wake, setWake] = useState(false);
   const [voice, setVoice] = useState(true);
   const [level, setLevel] = useState(0);
@@ -294,12 +295,14 @@ export default function Home() {
           <div className="breadcrumb">
             WORKSPACE <span>/</span> <b>COMMAND CENTER</b>
           </div>
+          <button className="model-toggle" aria-pressed={showModel} onClick={() => setShowModel(value => !value)}>{showModel ? "Hide Iron Man" : "Show Iron Man"}</button>
           <div className="system-status">
             <span className="green-dot" /> INTERFACE READY
           </div>
         </header>
         <div className="workspace-body">
-          <section className="command-stage">
+          <section className={"command-stage " + (showModel ? "model-expanded" : "model-hidden")}>
+            {showModel && <Reactor active={phase === "listening" || phase === "speaking"} level={level} />}
             <div className="stage-top">
               <span className="eyebrow">PERSONAL INTELLIGENCE INTERFACE</span>
               <span className="version">
@@ -309,7 +312,7 @@ export default function Home() {
             <div className="hero">
               <div className="orbit orbit-one" />
               <div className="orbit orbit-two" />
-              <Reactor active={phase !== "standby"} level={level} />
+
               <div className="reactor-label">
                 <span className="tiny-cross">+</span> ARC REACTOR{" "}
                 <span className="muted">/ 01</span>

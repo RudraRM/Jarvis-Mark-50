@@ -99,7 +99,7 @@ export default function Reactor({
     camera.position.set(0, 0, 10);
     const avatar = new THREE.Group();
     scene.add(avatar);
-    avatar.scale.setScalar(0.9);
+    avatar.scale.setScalar(1);
     avatar.position.y = 0.4;
     const reactor = new THREE.Group();
     avatar.add(reactor);
@@ -239,7 +239,8 @@ export default function Reactor({
     const resize = () => {
       const { width, height } = host.getBoundingClientRect();
       if (!width || !height) return;
-      avatar.position.y = width < 500 ? 0.6 : 0.4;
+      avatar.position.y = 0;
+      camera.position.z = Math.max(5 / (2 * Math.tan(THREE.MathUtils.degToRad(17.5))) / .91, 3.4 / (2 * Math.tan(THREE.MathUtils.degToRad(17.5)) * (width / height)));
       renderer.setSize(width, height);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
@@ -256,11 +257,8 @@ export default function Reactor({
         avatar.rotation.y = Math.sin(time * 0.0003) * 0.035;
         stars.rotation.z = time * 0.000006;
       }
-      const power = reduced
-        ? 1
-        : e.active
-          ? 1.5 + e.level * 3 + Math.sin(time * 0.008) * 0.15
-          : 1;
+      // Silence is dim; only measured voice energy lights the chest.
+      const power = e.active ? .08 + Math.max(0, e.level - .025) * 5 : .08;
       cyan.emissiveIntensity = power * 1.5;
       chestMaterials.forEach((material) => {
         material.emissiveIntensity = power;
