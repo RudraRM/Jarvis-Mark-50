@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { POST } from '../app/api/chat/route';
 
-test('chat defaults to GLM fast reasoning and returns its final answer', async () => {
+test('chat defaults to Nemotron with thinking disabled and returns its final answer', async () => {
   const originalFetch = globalThis.fetch;
   const oldKey = process.env.NVIDIA_API_KEY;
   const oldModel = process.env.NVIDIA_CHAT_MODEL;
@@ -22,9 +22,9 @@ test('chat defaults to GLM fast reasoning and returns its final answer', async (
       assert.equal(result.status,200);
       assert.equal((await result.json()).text,'Hello.');
     }
-    assert.equal(payloads[0].model,'z-ai/glm-5.3-flash');
-    assert.equal(payloads[0].reasoning_effort,'low');
-    assert.deepEqual(payloads[0].chat_template_kwargs,{clear_thinking:true});
+    assert.equal(payloads[0].model,'nvidia/nemotron-3.5-lightning-30b-a3b');
+    assert.equal(payloads[0].reasoning_effort,undefined);
+    assert.deepEqual(payloads[0].chat_template_kwargs,{enable_thinking:false});
     assert.ok(payloads[1].max_tokens > payloads[0].max_tokens);
   } finally {
     globalThis.fetch=originalFetch;
