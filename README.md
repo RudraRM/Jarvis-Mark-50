@@ -98,3 +98,15 @@ The supplied GLB is bundled unchanged. Runtime additions include scene lighting,
 ### ⚡ Fast chat configuration
 
 Chat defaults to `z-ai/glm-5.3-flash`. It uses NVIDIA’s documented `reasoning_effort: "low"` and `clear_thinking: true` settings, with short conversational answers by default. Requests explicitly asking for detail or research retain a larger output budget. This reduces generation work but does not guarantee endpoint latency; the app still waits for the complete answer before speech. Web search and tool execution are not connected, so this setting alone does not enable live research.
+
+### 🔎 Live model verification
+
+With Jarvis running locally, test the real configured endpoint (not a mocked response):
+
+```sh
+node scripts/test-live-chat.mjs
+```
+
+The check asks a simple arithmetic question, verifies the expected answer, reports elapsed time, and exits with a failure status for errors or an incorrect answer. It does not print API credentials.
+
+**November 15, 2026 verification:** GLM-5.3-Flash with low reasoning effort did not return an answer: a direct NVIDIA request timed out after 180.14 seconds, and the Jarvis chat route returned a timeout after 180.74 seconds. A control request using the same key and network with Nemotron 3.5 Lightning returned HTTP 200 and the correct answer in 1.46 seconds. All 11 automated tests passed, but GLM live inference and fast responses remain unverified. GLM stays selected; these results do not establish the endpoint's behavior for other accounts or networks.
