@@ -36,7 +36,7 @@ export default function Home() {
   const [showControls, setShowControls] = useState(false);
   const [wake, setWake] = useState(false);
   const [voice, setVoice] = useState(true);
-  const [level, setLevel] = useState(0);
+  const [eyesLit, setEyesLit] = useState(false);
   const [latency, setLatency] = useState<number | null>(null);
   const [chatOpen, setChatOpen] = useState(true);
   const busy = useRef(false);
@@ -103,7 +103,7 @@ export default function Home() {
         try {
           for (const chunk of speechChunks(text)) {
             const response = await api('/api/speak', {text:chunk}, signal);
-            await speech.current!.play(await response.arrayBuffer(), signal, () => setPhase('speaking'), setLevel);
+            await speech.current!.play(await response.arrayBuffer(), signal, () => setPhase('speaking'), () => {});
           }
         } catch (error) {
           speechFailed = true;
@@ -148,7 +148,7 @@ export default function Home() {
     }
   }
 
-  async function run(text?: string) {
+  async function run(text?: string, wakeCommand = false) {
     if (busy.current) return;
     if (voiceRef.current) {
       try {
@@ -172,7 +172,10 @@ export default function Home() {
         text = undefined;
         setShowControls(true);
         setPhase("listening");
-        const blob = await recordQuestion(setLevel, ctrl.signal);
+        const blob = await recordQuestion(() => {}, ctrl.signal,
+          wakeCommand ? () => setEyesLit(true) : undefined);
+        setEyesLit(false);
+        wakeCommand = false;
         setPhase("transcribing");
         const response = await fetch("/api/transcribe", {
           method: "POST",
@@ -199,6 +202,7 @@ export default function Home() {
             : "Microphone unavailable. Please use chat.",
         );
     } finally {
+      setEyesLit(false);
       busy.current = false;
       setPhase("standby");
       controller.current = null;
@@ -206,7 +210,7 @@ export default function Home() {
     }
   }
   askRef.current = () => {
-    void run();
+    void run(undefined, true);
   };
   function toggleWake() {
     if (wake) {
@@ -330,7 +334,6 @@ export default function Home() {
         </header>
         <div className="workspace-body">
           <section className={"command-stage model-expanded " + (showControls ? "controls-visible" : "controls-hidden")}>
-            <Reactor active={phase === "listening" || phase === "speaking"} level={level} />
             <div className="stage-top">
               <span className="eyebrow">PERSONAL INTELLIGENCE INTERFACE</span>
               <span className="version">
@@ -338,11 +341,12 @@ export default function Home() {
               </span>
             </div>
             <div className="hero">
+              <Reactor active={eyesLit} />
               <div className="orbit orbit-one" />
               <div className="orbit orbit-two" />
 
               <div className="reactor-label">
-                <span className="tiny-cross">+</span> ARC REACTOR{" "}
+                <span className="tiny-cross">+</span> MK3 HELMET{" "}
                 <span className="muted">/ 01</span>
               </div>
               <div className="reactor-coordinate">
@@ -409,14 +413,7 @@ export default function Home() {
                 Wake mode uses browser speech recognition. Questions go to
                 NVIDIA.
               </p>
-              <a
-                className="model-credit"
-                href="https://sketchfab.com/3d-models/iron-man-mark-50-14b72606d50840d7a4125128e73386a6"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Mark 50 model · Tsm / CC BY 4.0
-              </a>
+
             </div>
             <div className="suggestions">
               <div className="suggestion-label">A place to start</div>

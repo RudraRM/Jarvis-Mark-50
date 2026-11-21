@@ -1,6 +1,7 @@
 export async function recordQuestion(
   onLevel: (level: number) => void,
   signal: AbortSignal,
+  onSpeechStart?: () => void,
 ): Promise<Blob> {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
@@ -24,6 +25,7 @@ export async function recordQuestion(
       let lastSound = start;
       let heard = false;
       const cleanup = () => {
+        capture.port.onmessage = null;
         clearInterval(timer);
         signal.removeEventListener("abort", abort);
       };
@@ -41,6 +43,7 @@ export async function recordQuestion(
         onLevel(Math.min(1, rms * 8));
         if (rms > 0.015) {
           lastSound = performance.now();
+          if (!heard) onSpeechStart?.();
           heard = true;
         }
       };

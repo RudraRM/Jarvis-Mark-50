@@ -977,3 +977,16 @@ h1 {
 .model-expanded > .reactor-canvas[data-model-status="loading"],.model-expanded > .reactor-canvas[data-model-status="error"] {visibility:hidden;}
 .model-expanded > .model-status {top:auto;bottom:125px;padding:12px;background:#081016e6;border-radius:8px;}
 .model-error-detail{display:block;margin-top:6px;overflow-wrap:anywhere;color:#bccbd1;line-height:1.5}
+
+.model-expanded .hero > .reactor-canvas,
+.model-expanded .hero > .helmet-preview {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.helmet-preview {
+  background: url('/models/mk3-helmet-preview.png') center / auto 78% no-repeat;
+}
+.hero .reactor-canvas:not([data-model-status="ready"]) { visibility: hidden; }
+.hero .model-status { z-index: 2; top: auto; bottom: 0; pointer-events: auto; }
+.hero .hero-copy { pointer-events: none; }
