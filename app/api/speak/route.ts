@@ -1,30 +1,29 @@
-import { authorize, failure, upstreamError } from "@/lib/server";
+import { authorize, failure } from "@/lib/server";
+
+const voiceId = "wDsJlOXPqcvIUKdLXjDs";
+
 export async function POST(request: Request) {
   try {
-    const key = authorize(request);
+    authorize(request);
     const { text } = await request.json();
     if (typeof text !== "string" || !text.trim() || text.length > 6000)
       throw new Error("Invalid speech text.");
-    const form = new FormData();
-    Object.entries({
-      text,
-      language: "en-US",
-      voice: process.env.NVIDIA_TTS_VOICE || "Magpie-Multilingual.EN-US.Aria",
-      encoding: "LINEAR_PCM",
-      sample_rate_hz: "44100",
-    }).forEach(([k, v]) => form.set(k, v));
+
+    const key = process.env.ELEVENLABS_API_KEY;
+    if (!key) throw new Error("Add ELEVENLABS_API_KEY to .env.local and restart Jarvis.");
     const result = await fetch(
-      "https://877104f7-e885-42b9-8de8-f6e4c6303969.invocation.api.nvcf.nvidia.com/v1/audio/synthesize",
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
       {
         method: "POST",
-        headers: { Authorization: `Bearer ${key}` },
-        body: form,
+        headers: { "xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg" },
+        body: JSON.stringify({ text, model_id: "eleven_multilingual_v2" }),
         signal: request.signal,
       },
     );
-    if (!result.ok) throw upstreamError(result.status);
-    return new Response(await result.arrayBuffer(), {
-      headers: { "Content-Type": "audio/wav", "Cache-Control": "no-store" },
+    if (!result.ok)
+      throw new Error(`ElevenLabs speech request failed (HTTP ${result.status}). Check your API key, voice access, and available credits.`);
+    return new Response(result.body, {
+      headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" },
     });
   } catch (error) {
     return failure(error);
