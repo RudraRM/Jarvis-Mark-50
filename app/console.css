@@ -9,12 +9,12 @@
 }
 .jr-console::before, .jr-console::after {
   content: ""; position: absolute; z-index: -1; pointer-events: none;
-  width: 77vw; aspect-ratio: 1; left: 50%; top: 40%; transform: translate(-50%,-50%);
+  width: 68vw; aspect-ratio: 1; left: 50%; top: 40%; transform: translate(-50%,-50%);
   border-radius: 50%; border: 2px solid #064260;
   mask-image: linear-gradient(black 30%, transparent 85%);
 }
 .jr-console::after {
-  width: 81vw; border: 0;
+  width: 72vw; border: 0;
   background: conic-gradient(transparent 0 68deg,#00638a 68deg 89deg,transparent 89deg 239deg,#00638a 239deg 254deg,transparent 254deg 302deg,#0086aa 302deg 325deg,transparent 325deg);
   mask-image: radial-gradient(closest-side, transparent 96%, black 96%);
 }
@@ -59,9 +59,14 @@
   .jr-content {width:92%;padding:58px 0 10px;min-height:max(620px,100svh);}
   .jr-rail {top:8px;left:50%;transform:translateX(-50%);display:flex;gap:4px;border-radius:12px;}
   .jr-rail button {width:44px;height:34px;}
-  .jr-reactor {width:38vw;}
+  .jr-reactor {width:32vw;}
   .jr-actions {width:100%;gap:6px;}
   .jr-actions button {border-radius:12px;font-size:13px;}
   .jr-settings {top:58px;left:4%;}
   .jr-chat {bottom:20%;}
+}
+
+@media (min-width:701px) {
+  .jr-content { transform: scale(.88); }
+  .jr-rail { transform: scale(.88); transform-origin: left center; }
 }
