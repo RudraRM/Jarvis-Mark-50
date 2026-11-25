@@ -14,7 +14,7 @@ Your personal AI command center, powered by NVIDIA. Talk to Jarvis, explore idea
 - 🖥️ **Customize the dashboard:** show or hide the greeting and voice panel from the top-right button, toggle the conversation panel, mute spoken answers, start a fresh conversation, or enter full screen.
 - 🛟 **Recover from graphics failures:** a helmet preview stays visible if live 3D fails, with a manual reload button and error details. Text and voice controls remain available.
 
-Jarvis answers from the conversation and model knowledge. Live web browsing, computer control, reminders, and external account actions are not connected. Conversation history is kept in memory for the current page session; recordings are not saved by the app. AI answers can be wrong—verify important information.
+Jarvis answers from the conversation and model knowledge. Live web search uses Tavily. Local Mac actions use the registered commands below. Conversation history is kept in memory for the current page session; recordings are not saved by the app. AI answers can be wrong—verify important information.
 
 ## 🚀 Run locally
 
@@ -99,7 +99,7 @@ See [full legacy asset attribution](public/models/ATTRIBUTION.md).
 
 ### ⚡ Fast chat configuration
 
-Chat defaults to `nvidia/nemotron-3.5-lightning-30b-a3b` with thinking disabled and short conversational answers by default. Requests explicitly asking for detail retain a larger output budget. Endpoint latency varies; text and sentence-level speech begin before the answer finishes. Web search and tool execution are not connected.
+Chat defaults to `nvidia/nemotron-3.5-lightning-30b-a3b` with thinking disabled and short conversational answers by default. Requests explicitly asking for detail retain a larger output budget. Endpoint latency varies; text and sentence-level speech begin before the answer finishes. Live searches and local actions are routed before answer generation.
 
 ### 🔎 Live model verification
 
@@ -112,3 +112,18 @@ node scripts/test-live-chat.mjs
 The check asks a simple arithmetic question, verifies the expected answer, reports elapsed time, and exits with a failure status for errors or an incorrect answer. It does not print API credentials.
 
 **November 15, 2026 verification:** GLM-5.3-Flash with low reasoning effort did not return an answer: a direct NVIDIA request timed out after 180.14 seconds, and the Jarvis chat route returned a timeout after 180.74 seconds. A control request using the same key and network with Nemotron 3.5 Lightning returned HTTP 200 and the correct answer in 1.46 seconds. All 11 automated tests passed, but GLM live inference and fast responses remain unverified. Jarvis was subsequently switched back to Nemotron 3.5 Lightning. These results do not establish endpoint behavior for other accounts or networks.
+
+
+### Live search and local actions
+
+Add `TAVILY_API_KEY=your_tavily_key` to `.env.local` and restart. Search requests send the query to Tavily and use NVIDIA to summarize retrieved excerpts. An unavailable search produces a short spoken fallback.
+
+Run Jarvis on your Mac and open its localhost dashboard for desktop commands. Try “Open Spotify”, “Open example.com”, or “Remind me in 20 minutes to practice guitar”. Allow macOS Reminders access when prompted. Registered apps are Spotify, Safari, Calculator, Notes, Reminders, Calendar, and Music.
+
+Register a smart-home command by mapping its exact lowercase phrase to your own webhook URL in `.env.local`, then restart:
+
+```dotenv
+JARVIS_WEBHOOKS='{"turn on desk lights":"https://your-home-service.example/your-private-webhook"}'
+```
+
+Jarvis reports whether the webhook accepted the request. Use this personal dashboard on loopback only. Keep webhook credentials and API keys server-side.
