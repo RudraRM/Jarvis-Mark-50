@@ -109,7 +109,9 @@ export default function Home() {
     let speechQueue = Promise.resolve();
     const wantsVoice = voiceRef.current;
     const enqueue = (text: string) => {
-      if (!wantsVoice || !text.trim()) return;
+      text = text.replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/gi, "$1")
+        .replace(/(?:https?:\/\/|www\.)[^\s]+|\b(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s]*)?|\[(?:\d+(?:\s*[,–-]\s*\d+)*|source[^\]]*)\]/gi, "").trim();
+      if (!wantsVoice || !text) return;
       speechQueue = speechQueue.then(async () => {
         if (speechFailed) return;
         signal.throwIfAborted();
@@ -283,8 +285,8 @@ export default function Home() {
     controller.current?.abort();
   };
   const shortcuts = [
-    { label: "Open Apps", icon: Laptop, prompt: "Help me open an app on my device: " },
-    { label: "Browse Web", icon: Globe, prompt: "Help me find search terms for: " },
+    { label: "Open Apps", icon: Laptop, prompt: "Open " },
+    { label: "Browse Web", icon: Globe, prompt: "Search the web for " },
     { label: "Write Code", icon: Code, prompt: "Help me write code for: " },
     { label: "Do Tasks", icon: ListChecks, prompt: "Help me plan this task: " },
   ];
