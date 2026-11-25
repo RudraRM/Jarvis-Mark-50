@@ -1,12 +1,32 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { House, MessageCircle, LayoutGrid, Mic, Maximize, Laptop, Globe, Code, ListChecks, Send, Volume2, AudioLines, Plus, X } from "lucide-react";
 import "./console.css";
 import { readChatStream } from "@/lib/chat-stream";
 import { recordQuestion } from "@/lib/audio";
 import type { Message } from "@/lib/server";
 import { WakeListener } from "@/lib/wake";
 import { SpeechPlayer, speechChunks } from "@/lib/speech";
+function makeIcon(path: string) {
+  return function Icon() {
+    return <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d={path} /></svg>;
+  };
+}
+
+const House = makeIcon("M3 10 12 3l9 7v11h-7v-7h-4v7H3Z");
+const MessageCircle = makeIcon("M21 11a9 9 0 0 1-13 8l-5 2 1-5a9 9 0 1 1 17-5Z");
+const LayoutGrid = makeIcon("M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z");
+const Mic = makeIcon("M9 6a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0z M5 11v1a7 7 0 0 0 14 0v-1 M12 19v3");
+const Maximize = makeIcon("M3 9V3h6 M15 3h6v6 M21 15v6h-6 M9 21H3v-6");
+const Laptop = makeIcon("M4 4h16v13H4z M2 20h20");
+const Globe = makeIcon("M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0z M2 12h20 M12 2q-9 10 0 20 9-10 0-20z");
+const Code = makeIcon("M7 6l-6 6 6 6 M17 6l6 6-6 6 M15 3 9 21");
+const ListChecks = makeIcon("M3 6l2 2 3-4 M11 6h10 M3 16l2 2 3-4 M11 16h10");
+const Send = makeIcon("M22 2 15 22l-4-9-9-4z M11 13 22 2");
+const Volume2 = makeIcon("M3 9h4l5-5v16l-5-5H3z M16 8q4 4 0 8 M19 5q7 7 0 14");
+const AudioLines = makeIcon("M3 10v4 M7 6v12 M12 2v20 M17 6v12 M21 10v4");
+const Plus = makeIcon("M12 4v16 M4 12h16");
+const X = makeIcon("M5 5l14 14 M19 5 5 19");
+
 type Phase = "standby" | "listening" | "transcribing" | "thinking" | "speaking";
 const labels: Record<Phase, string> = {
   standby: "At your service.",
