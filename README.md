@@ -7,7 +7,7 @@ Your personal AI command center, powered by NVIDIA. Talk to Jarvis, explore idea
 - 💬 **Answer questions:** explain concepts, brainstorm ideas, help write text, discuss code, and make plans through NVIDIA’s language model.
 - 🎙️ **Take spoken questions:** record from your microphone and transcribe with NVIDIA Parakeet.
 - 👋 **Wake to your voice:** enable wake mode, say **“Jarvis”** or **“Hey Jarvis,”** pause for **“I’m listening,”** then ask your question.
-- 🔊 **Speak answers:** NVIDIA Magpie reads responses using the configured voice, Aria by default. Long responses are split into ordered speech chunks with no application-imposed synthesis or playback time limit. You can cancel at any time.
+- 🔊 **Speak answers:** ElevenLabs reads responses using voice `wDsJlOXPqcvIUKdLXjDs`. Long responses are split into ordered speech chunks with no application-imposed synthesis or playback time limit. You can cancel at any time.
 - 🔁 **Listen for follow-ups:** after a successfully delivered answer ending in a question, Jarvis opens the voice controls and listens for your reply automatically. Silence or cancellation stops the flow.
 - ⌨️ **Keep chatting without a microphone:** text chat works independently of voice support. Answers remain visible if speech fails.
 - 🦾 **Bring Mark 50 to life:** a centered, front-facing MK3 helmet. Its eyes turn steady blue when speech begins after the wake word and go dark when recording ends.
@@ -18,7 +18,7 @@ Jarvis answers from the conversation and model knowledge. Live web browsing, com
 
 ## 🚀 Run locally
 
-Requires **Node.js 20.9+**, an NVIDIA API Catalog key, and model access/quota. Microphone features require localhost or HTTPS.
+Requires **Node.js 20.9+**, an NVIDIA API Catalog key, and model access/quota. Spoken replies also require an ElevenLabs API key with access to the selected voice. Microphone features require localhost or HTTPS.
 
 ```sh
 npm ci
@@ -29,7 +29,7 @@ Create or edit `.env.local` in the project root:
 ```dotenv
 NVIDIA_API_KEY=your_nvidia_api_key
 NVIDIA_CHAT_MODEL=nvidia/nemotron-3.5-lightning-30b-a3b
-NVIDIA_TTS_VOICE=Magpie-Multilingual.EN-US.Aria
+ELEVENLABS_API_KEY=your_elevenlabs_api_key
 ```
 
 Keep your real key private and out of Git. Credentials are read by server routes; never prefix the key with `NEXT_PUBLIC_`.
@@ -70,14 +70,14 @@ WebKit checks cover model rendering, texture decoding, fallback/retry behavior, 
 | --- | --- |
 | Speech to text | NVIDIA Parakeet CTC 1.1B |
 | Answer generation | NVIDIA Nemotron 3.5 Lightning, configurable through `NVIDIA_CHAT_MODEL` |
-| Text to speech | NVIDIA Magpie Multilingual, configurable through `NVIDIA_TTS_VOICE` |
+| Text to speech | ElevenLabs Multilingual v2 |
 | Visualization | Three.js + the supplied Mark 50 GLB |
 
 Answer generation allows up to **180 seconds** and **8,192 output tokens**. Speech uses chunks of at most **1,200 characters**, each played to completion. NVIDIA and network limits can still interrupt requests; errors include the failure cause. If an answer hits the model output limit, ask Jarvis to continue.
 
 “First text” measures time to the first generated text, not the full voice round trip. Hosted inference cannot provide a 10 ms end-to-end speech response. Text streams into chat immediately. Speech synthesis begins at the first complete sentence while the remaining answer generates.
 
-API references: [Parakeet](https://build.nvidia.com/nvidia/parakeet-ctc-1_1b-asr/api) · [Magpie](https://build.nvidia.com/nvidia/magpie-tts-multilingual/api).
+API references: [Parakeet](https://build.nvidia.com/nvidia/parakeet-ctc-1_1b-asr/api) · [ElevenLabs speech](https://elevenlabs.io/docs/api-reference/text-to-speech/convert).
 
 ## 🧪 Development checks
 
