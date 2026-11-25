@@ -1,20 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import {
-  Activity,
-  ArrowUp,
-  AudioLines,
-  Command,
-  Maximize,
-  MessageSquare,
-  Mic,
-  MicOff,
-  Plus,
-  Volume2,
-  VolumeX,
-  X,
-} from "lucide-react";
-import Reactor from "@/components/Reactor";
+import { House, MessageCircle, LayoutGrid, Mic, Maximize, Laptop, Globe, Code, ListChecks, Send, Volume2, AudioLines, Plus, X } from "lucide-react";
+import "./console.css";
 import { readChatStream } from "@/lib/chat-stream";
 import { recordQuestion } from "@/lib/audio";
 import type { Message } from "@/lib/server";
@@ -38,7 +25,12 @@ export default function Home() {
   const [voice, setVoice] = useState(true);
   const [eyesLit, setEyesLit] = useState(false);
   const [latency, setLatency] = useState<number | null>(null);
-  const [chatOpen, setChatOpen] = useState(true);
+  const [chatOpen, setChatOpen] = useState(false);
+  const display = useRef<HTMLDivElement>(null);
+  const composer = useRef<HTMLInputElement>(null);
+  function showLevel(level: number) {
+    display.current?.style.setProperty("--amplitude", String(0.26 + level * 1.8));
+  }
   const busy = useRef(false);
   const controller = useRef<AbortController | null>(null);
   const speech = useRef<SpeechPlayer | null>(null);
@@ -80,6 +72,7 @@ export default function Home() {
     ];
     history.current = next;
     setMessages(next);
+    setChatOpen(true);
     setPhase("thinking");
     const start = performance.now();
     const recent = next.slice(-24);
@@ -103,7 +96,7 @@ export default function Home() {
         try {
           for (const chunk of speechChunks(text)) {
             const response = await api('/api/speak', {text:chunk}, signal);
-            await speech.current!.play(await response.arrayBuffer(), signal, () => setPhase('speaking'), () => {});
+            await speech.current!.play(await response.arrayBuffer(), signal, () => setPhase('speaking'), showLevel);
           }
         } catch (error) {
           speechFailed = true;
@@ -172,7 +165,7 @@ export default function Home() {
         text = undefined;
         setShowControls(true);
         setPhase("listening");
-        const blob = await recordQuestion(() => {}, ctrl.signal,
+        const blob = await recordQuestion(showLevel, ctrl.signal,
           wakeCommand ? () => setEyesLit(true) : undefined);
         setEyesLit(false);
         wakeCommand = false;
@@ -269,309 +262,45 @@ export default function Home() {
   const cancel = () => {
     controller.current?.abort();
   };
-  const prompts = [
-    "Explain something complex",
-    "Help me plan my day",
-    "Let’s build something",
+  const shortcuts = [
+    { label: "Open Apps", icon: Laptop, prompt: "Help me open an app on my device: " },
+    { label: "Browse Web", icon: Globe, prompt: "Help me find search terms for: " },
+    { label: "Write Code", icon: Code, prompt: "Help me write code for: " },
+    { label: "Do Tasks", icon: ListChecks, prompt: "Help me plan this task: " },
   ];
   return (
-    <main className="dashboard">
-      <aside className="sidebar">
-        <a className="brand" href="/" aria-label="Jarvis home">
-          <span className="brand-icon">J</span>
-          <span>
-            Jarvis<small>MARK 50</small>
-          </span>
-        </a>
-        <div className="nav-caption">WORKSPACE</div>
-        <button className="nav-item selected" onClick={() => setChatOpen(true)}>
-          <Command size={18} /> Command center <span className="nav-dot" />
-        </button>
-        <button className="nav-item" onClick={() => setChatOpen((v) => !v)}>
-          <MessageSquare size={18} /> Conversation{" "}
-          <span className="count">
-            {messages.filter((m) => m.role === "user").length}
-          </span>
-        </button>
-        <div className="sidebar-bottom">
-          <div className="powered">
-            <span className="chip">N</span>
-            <div>
-              Powered by NVIDIA<small>Intelligence, accelerated.</small>
-            </div>
-          </div>
-          <button
-            className="fullscreen"
-            onClick={async () => {
-              try {
-                if (document.fullscreenElement) await document.exitFullscreen();
-                else await document.documentElement.requestFullscreen();
-              } catch {
-                setError("Fullscreen is unavailable in this browser.");
-              }
-            }}
-          >
-            <Maximize size={16} /> Full screen <span>↗</span>
-          </button>
-          <div className="profile">
-            <div className="avatar">R</div>
-            <div>
-              Personal workspace<small>JARVIS / MARK 50</small>
-            </div>
-            <span className="green-dot" />
-          </div>
+    <main className="jr-console">
+      <nav aria-label="Jarvis controls" className="jr-rail">
+        <button title="Home" aria-pressed={!chatOpen && !showControls} onClick={() => {setChatOpen(false); setShowControls(false)}}><House /></button>
+        <button title="Conversation" aria-expanded={chatOpen} onClick={() => setChatOpen(!chatOpen)}><MessageCircle /></button>
+        <button title="Quick actions" onClick={() => {setChatOpen(false); setShowControls(false); document.getElementById("first-action")?.focus()}}><LayoutGrid /></button>
+        <button title="Voice controls" aria-expanded={showControls} onClick={() => setShowControls(!showControls)}><Mic /></button>
+        <button title="Full screen" onClick={async () => {try {if(document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen()} catch {setError("Fullscreen is unavailable in this browser.")}}}><Maximize /></button>
+      </nav>
+      <div className="jr-content">
+        <div className="jr-heading"><h1>JARVIS</h1><p>Your Personal AI Assistant</p></div>
+        <div className="jr-display" ref={display} aria-hidden="true">
+          {["left","right"].map(side => <div key={side} className={"jr-wave " + side}>
+            {Array.from({length: 13}, (_, i) => <i key={i} style={{height: (9 + 85 * Math.pow(1 - Math.abs(i - 6) / 6, 1.4)) + "%"}} />)}
+          </div>)}
+          <div className={"jr-reactor" + (eyesLit ? " lit" : "")}><div><span>▼</span></div></div>
         </div>
-      </aside>
-      <section className="workspace">
-        <header>
-          <div className="breadcrumb">
-            WORKSPACE <span>/</span> <b>COMMAND CENTER</b>
-          </div>
-          <button className="model-toggle" aria-expanded={showControls} aria-controls="jarvis-voice-controls" onClick={() => setShowControls(value => !value)}>{showControls ? "Hide voice controls" : "Show voice controls"}</button>
-          <div className="system-status">
-            <span className="green-dot" /> INTERFACE READY
-          </div>
-        </header>
-        <div className="workspace-body">
-          <section className={"command-stage model-expanded " + (showControls ? "controls-visible" : "controls-hidden")}>
-            <div className="stage-top">
-              <span className="eyebrow">PERSONAL INTELLIGENCE INTERFACE</span>
-              <span className="version">
-                MK. L <span>↗</span>
-              </span>
-            </div>
-            <div className="hero">
-              <Reactor active={eyesLit} />
-              <div className="orbit orbit-one" />
-              <div className="orbit orbit-two" />
-
-              <div className="reactor-label">
-                <span className="tiny-cross">+</span> MK3 HELMET{" "}
-                <span className="muted">/ 01</span>
-              </div>
-              <div className="reactor-coordinate">
-                CORE SYSTEM
-                <br />
-                <span>NEURAL INTERFACE</span>
-              </div>
-              <div className="hero-copy" hidden={!showControls}>
-                <div className="online-tag">
-                  <span />{" "}
-                  {phase === "standby" ? "JARVIS ONLINE" : phase.toUpperCase()}
-                </div>
-                <h1>{labels[phase]}</h1>
-                <p>
-                  {phase === "listening"
-                    ? "Speak your question. I’ll stop when you pause."
-                    : wake
-                      ? "Say “Hey Jarvis,” pause, then ask your question."
-                      : "A little curiosity. Infinite possibilities."}
-                </p>
-              </div>
-            </div>
-            <div className="interaction" id="jarvis-voice-controls" hidden={!showControls}>
-              <div className="voice-controls">
-                <button
-                  title={
-                    voice ? "Mute spoken answers" : "Enable spoken answers"
-                  }
-                  className={"round secondary " + (!voice ? "off" : "")}
-                  onClick={() => {
-                    setVoice(!voice);
-                    if (voice) cancel();
-                  }}
-                >
-                  {voice ? <Volume2 size={19} /> : <VolumeX size={19} />}
-                </button>
-                <button
-                  className={
-                    "mic-button " + (phase !== "standby" ? "active" : "")
-                  }
-                  onClick={() => (busy.current ? cancel() : void run())}
-                  aria-label={
-                    phase === "standby"
-                      ? "Ask with microphone"
-                      : "Cancel current request"
-                  }
-                >
-                  {phase === "standby" ? <Mic size={24} /> : <X size={24} />}
-                </button>
-                <button
-                  title="Toggle wake-word listening"
-                  className={"round secondary " + (wake ? "enabled" : "")}
-                  onClick={toggleWake}
-                  disabled={phase !== "standby"}
-                >
-                  {wake ? <AudioLines size={20} /> : <MicOff size={19} />}
-                </button>
-              </div>
-              <div className="mic-hint">
-                {phase === "standby" ? "CLICK TO SPEAK" : "CLICK TO CANCEL"}{" "}
-                <span>·</span> {wake ? "WAKE WORD ON" : "WAKE WORD OFF"}
-              </div>
-              <p className="privacy-note">
-                Wake mode uses browser speech recognition. Questions go to
-                NVIDIA.
-              </p>
-
-            </div>
-            <div className="suggestions">
-              <div className="suggestion-label">A place to start</div>
-              <div className="prompt-grid">
-                {prompts.map((p, i) => (
-                  <button
-                    key={p}
-                    disabled={phase !== "standby"}
-                    onClick={() => void run(p)}
-                  >
-                    <span className="prompt-number">0{i + 1}</span>
-                    {p}
-                    <span>↗</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <footer className="telemetry">
-              <div>
-                <Activity size={14} />
-                <span>SYSTEM</span>
-                <b>Operational</b>
-              </div>
-              <div>
-                <span>MODEL</span>
-                <b>NVIDIA NIM</b>
-              </div>
-              <div>
-                <span>FIRST TEXT</span>
-                <b>
-                  {latency === null ? "—" : `${(latency / 1000).toFixed(2)} s`}
-                </b>
-              </div>
-              <span className="footer-mark">J.A.R.V.I.S.</span>
-            </footer>
-          </section>
-          {chatOpen ? (
-            <aside className="chat">
-              <div className="chat-heading">
-                <div>
-                  <MessageSquare size={17} />
-                  <h2>Conversation</h2>
-                </div>
-                <button
-                  title="New conversation"
-                  disabled={phase !== "standby"}
-                  onClick={() => {
-                    history.current = [];
-                    setMessages([]);
-                    setError("");
-                    setLatency(null);
-                  }}
-                >
-                  <Plus size={19} />
-                </button>
-              </div>
-              <div className="chat-subheading">
-                A direct line to your intelligence.
-              </div>
-              <div className="messages" aria-live="polite">
-                {messages.length === 0 ? (
-                  <div className="welcome">
-                    <div className="assistant-icon">✧</div>
-                    <div className="message-author">
-                      JARVIS <span>READY WHEN YOU ARE</span>
-                    </div>
-                    <p>
-                      Good to see you.
-                      <br />
-                      What’s on your mind?
-                    </p>
-                    <p className="welcome-detail">
-                      Ask a question, explore an idea, or let’s make a plan. I’m
-                      here to help.
-                    </p>
-                    <span className="welcome-line" />
-                  </div>
-                ) : (
-                  messages.map((m, i) => (
-                    <div className={"message " + m.role} key={i}>
-                      <div className="message-author">
-                        {m.role === "user" ? "YOU" : "JARVIS"}
-                      </div>
-                      <p>{m.content}</p>
-                    </div>
-                  ))
-                )}
-                {phase === "thinking" && (
-                  <div className="thinking">
-                    Jarvis is thinking<span>•••</span>
-                  </div>
-                )}
-                <div ref={bottom} />
-              </div>
-              <div className="chat-compose">
-                {error && (
-                  <div role="alert" className="error">
-                    {error}
-                    <button
-                      onClick={() => setError("")}
-                      aria-label="Dismiss error"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (input.trim() && !busy.current) {
-                      void run(input.trim());
-                      setInput("");
-                    }
-                  }}
-                >
-                  <label className="sr-only" htmlFor="question">
-                    Message Jarvis
-                  </label>
-                  <textarea
-                    id="question"
-                    placeholder="Ask Jarvis anything…"
-                    value={input}
-                    maxLength={4000}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        e.currentTarget.form?.requestSubmit();
-                      }
-                    }}
-                  />
-                  <div className="compose-bottom">
-                    <span>
-                      ↵ <span>to send</span>
-                    </span>
-                    <button
-                      aria-label="Send message"
-                      disabled={!input.trim() || phase !== "standby"}
-                    >
-                      <ArrowUp size={17} />
-                    </button>
-                  </div>
-                </form>
-                <p>AI can make mistakes. Stay curious. Verify.</p>
-              </div>
-            </aside>
-          ) : (
-            <button className="reopen-chat" onClick={() => setChatOpen(true)}>
-              <MessageSquare size={18} /> Open chat
-            </button>
-          )}
-        </div>
-        {!chatOpen && error && (
-          <div className="floating-error" role="alert">
-            {error}
-          </div>
-        )}
-      </section>
+        <p className="jr-status" role="status">{phase === "standby" && wake ? "Waiting for “Jarvis”…" : phase === "listening" ? "Listening…" : phase === "speaking" ? "Speaking…" : labels[phase]}</p>
+        <div className="jr-actions">{shortcuts.map(({label, icon: Icon, prompt}, i) => <button id={i === 0 ? "first-action" : undefined} key={label} disabled={phase !== "standby"} onClick={() => {setInput(prompt); composer.current?.focus()}}><Icon />{label}</button>)}</div>
+        <form className="jr-compose" onSubmit={e => {e.preventDefault(); if(input.trim() && !busy.current){void run(input.trim()); setInput("")}}}>
+          <button type="button" title={phase === "standby" ? "Ask with microphone" : "Cancel current request"} onClick={() => busy.current ? cancel() : void run()}>{phase === "standby" ? <Mic /> : <X />}</button>
+          <input ref={composer} aria-label="Message Jarvis" placeholder="Ask me anything, sir..." value={input} maxLength={4000} onChange={e => setInput(e.target.value)} />
+          <button title="Send message" disabled={!input.trim() || phase !== "standby"}><Send /></button>
+        </form>
+      </div>
+      {showControls && <section className="jr-settings" aria-label="Voice controls"><button title="Close voice controls" onClick={() => setShowControls(false)}><X /></button>
+        <button aria-pressed={voice} onClick={() => {setVoice(!voice); if(voice) cancel()}}><Volume2 /> Spoken answers {voice ? "on" : "off"}</button>
+        <button aria-pressed={wake} disabled={phase !== "standby"} onClick={toggleWake}><AudioLines /> Wake word {wake ? "on" : "off"}</button>
+        <small>Wake mode uses browser speech recognition. Questions go to NVIDIA.</small></section>}
+      {chatOpen && <aside className="jr-chat"><div><strong>Conversation</strong><button title="New conversation" disabled={phase !== "standby"} onClick={() => {history.current=[]; setMessages([]); setError(""); setLatency(null)}}><Plus /></button><button title="Close conversation" onClick={() => setChatOpen(false)}><X /></button></div>
+        <section>{!messages.length && <p>Ask Jarvis a question to begin.</p>}{messages.map((m,i) => <article key={i}><b>{m.role === "user" ? "You" : "Jarvis"}</b><p>{m.content}</p></article>)}<div ref={bottom} /></section>
+        {latency !== null && <small>First text · {(latency/1000).toFixed(2)} s</small>}</aside>}
+      {error && <div className="jr-error" role="alert">{error}<button title="Dismiss error" onClick={() => setError("")}><X /></button></div>}
     </main>
   );
 }
